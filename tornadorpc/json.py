@@ -45,7 +45,7 @@ import types
 
 class JSONRPCParser(BaseRPCParser):
     
-    content_type = 'text/json'
+    content_type = 'application/json-rpc'
 
     def parse_request(self, request_body):
         try:
