@@ -24,6 +24,13 @@ You can use the utility functions like 'private' and 'start_server'.
 from tornado.web import RequestHandler
 import types
 
+# Configuration element
+class Config(object):
+    verbose = True
+    short_errors = True
+
+config = Config()
+
 class BaseRPCParser(object):
     """
     This class is responsible for managing the request, dispatch,
@@ -111,6 +118,7 @@ class BaseRPCParser(object):
                 return self.faults.invalid_params()
             except:
                 # We should log here...bare excepts are evil.
+                self.traceback(method_name, params)
                 return self.faults.internal_error()
             return response
         elif type(params) in (types.ListType, types.TupleType):
@@ -121,13 +129,33 @@ class BaseRPCParser(object):
                 return self.faults.invalid_params()
             except:
                 # Once again, we need to log here
+                self.traceback(method_name, params)
                 return self.faults.internal_error()
             return response
         else:
             # Bad argument formatting?
             return self.faults.invalid_params()
 
-    def parse_request(self, request_body):
+    def traceback(self, method_name, params):
+        import traceback
+        err_lines = traceback.format_exc().splitlines()
+        err_title = "ERROR IN %s" % method_name
+        if len(params) > 0:
+            err_title += ' - (PARAMS: %s)' % params
+        err_sep = ('-'*len(err_title))[:79]
+        err_lines = [err_sep, err_title, err_sep]+err_lines
+        global config
+        if config.verbose == True:
+            if len(err_lines) >= 7 and config.short_errors:
+                # Minimum number of lines to see what happened
+                # Plust title and separators
+                print '\n'.join(err_lines[0:4]+err_lines[-3:])
+            else:
+                print '\n'.join(err_lines)
+        # Log here
+        return
+
+    def parse_requesr(self, request_body):
         """
         Extend this on the implementing protocol. If it
         should error out, return the output of the
@@ -173,7 +201,7 @@ class BaseRPCHandler(RequestHandler):
     BaseRPCParser above.
     """
     _RPC_ = None
-
+    
     def post(self):
         # Very simple -- dispatches request body to the parser
         # and returns the output
