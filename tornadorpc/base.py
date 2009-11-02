@@ -67,11 +67,24 @@ class BaseRPCParser(object):
         to the client.
         """
         self.handler = handler
-        requests = self.parse_request(request_body)
+        try:
+            requests = self.parse_request(request_body)
+        except:
+            self.traceback()
+            return self.faults.parse_error()
         if type(requests) is not types.TupleType:
             # SHOULD be the result of a fault call,
             # according tothe parse_request spec below.
-            return requests
+            if type(requests) in types.StringTypes:
+                # Should be the response text of a fault
+                return requests
+            elif 'response' in dir(requests):
+                # Fault types should have a 'response' method
+                return requests.response()
+            else:
+                # No idea, hopefully the handler knows what it
+                # is doing.
+                return requests
         responses = []
         for request in requests:
             response = self.dispatch(request[0], request[1])
@@ -136,7 +149,7 @@ class BaseRPCParser(object):
             # Bad argument formatting?
             return self.faults.invalid_params()
 
-    def traceback(self, method_name, params):
+    def traceback(self, method_name='REQUEST', params=[]):
         import traceback
         err_lines = traceback.format_exc().splitlines()
         err_title = "ERROR IN %s" % method_name
@@ -155,7 +168,7 @@ class BaseRPCParser(object):
         # Log here
         return
 
-    def parse_requesr(self, request_body):
+    def parse_request(self, request_body):
         """
         Extend this on the implementing protocol. If it
         should error out, return the output of the

@@ -52,6 +52,7 @@ class JSONRPCParser(BaseRPCParser):
             request = jsonrpclib.loads(request_body)
         except:
             # Bad request formatting. Bad.
+            self.traceback()
             return self.faults.parse_error()
         self._requests = request
         self._batch = False
@@ -80,7 +81,7 @@ class JSONRPCParser(BaseRPCParser):
                 # response entry
                 continue
             rpcid = request['id']
-            version = jsonrpclib._version
+            version = jsonrpclib.config.version
             if 'jsonrpc' not in request.keys():
                 version = 1.0
             try:
