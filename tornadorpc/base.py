@@ -298,7 +298,7 @@ def private(obj):
         __call__ = obj
     return PrivateMethod()
 
-def start_server(handler, route=r'/', port=8080):
+def start_server(routes, route=r'/', port=8080):
     """
     This is just a friendly wrapper around the default
     Tornado instantiation calls. It simplifies the imports
@@ -309,17 +309,21 @@ def start_server(handler, route=r'/', port=8080):
     import tornado.web
     import tornado.ioloop
     import tornado.httpserver
-
-    routes = [(route, handler),]
-    if not route.endswith('/'):
-        route = r'%s/' % route
-    routes.append(('%sRPC2' % route, handler)) 
-
+    import types
+    if type(routes) not in (types.ListType, types.TupleType):
+        routes = [(route, routes),]
     application = tornado.web.Application(routes)
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(port)
-    tornado.ioloop.IOLoop.instance().start()
-
+    loop_instance = tornado.ioloop.IOLoop.instance()
+    """ Setting the '_server' attribute if not set """
+    for route in routes:
+        try:
+            server_attrib = setattr(route[1], '_server', loop_instance)
+        except AttributeError:
+            route[1]._server = loop_instance
+    loop_instance.start()
+    return loop_instance
 
 """
 The following is a test implementation which should work
