@@ -39,8 +39,10 @@ From Python 2.6 on, simplejson is included in the standard
 distribution as the "json" module.
 """
 
-from base import BaseRPCParser, BaseRPCHandler
+from tornadorpc.base import BaseRPCParser, BaseRPCHandler
 import jsonrpclib
+from jsonrpclib.jsonrpc import isbatch, isnotification, Fault
+from jsonrpclib.jsonrpc import dumps, loads
 import types
 
 class JSONRPCParser(BaseRPCParser):
@@ -49,7 +51,7 @@ class JSONRPCParser(BaseRPCParser):
 
     def parse_request(self, request_body):
         try:
-            request = jsonrpclib.loads(request_body)
+            request = loads(request_body)
         except:
             # Bad request formatting. Bad.
             self.traceback()
@@ -57,7 +59,7 @@ class JSONRPCParser(BaseRPCParser):
         self._requests = request
         self._batch = False
         request_list = []
-        if jsonrpclib.isbatch(request):
+        if isbatch(request):
             self._batch = True
             for req in request:
                 req_tuple = (req['method'], req['params'])
@@ -68,15 +70,15 @@ class JSONRPCParser(BaseRPCParser):
         return tuple(request_list)
 
     def parse_responses(self, responses):
-        if isinstance(responses, jsonrpclib.Fault):
-            return jsonrpclib.dumps(responses)
+        if isinstance(responses, Fault):
+            return dumps(responses)
         if len(responses) != len(self._requests):
-            return jsonrpclib.dumps(self.faults.internal_error())
+            return dumps(self.faults.internal_error())
         response_list = []
         for i in range(0, len(responses)):
             request = self._requests[i]
             response = responses[i]
-            if jsonrpclib.isnotification(request):
+            if isnotification(request):
                 # Even in batches, notifications have no
                 # response entry
                 continue
@@ -85,11 +87,15 @@ class JSONRPCParser(BaseRPCParser):
             if 'jsonrpc' not in request.keys():
                 version = 1.0
             try:
-                response_json = jsonrpclib.dumps(response, version=version,
-                                rpcid=rpcid, methodresponse=True)
+                response_json = dumps(
+                    response, version=version,
+                    rpcid=rpcid, methodresponse=True
+                )
             except TypeError:
-                return jsonrpclib.dumps(self.faults.server_error(),
-                                        rpcid=rpcid, version=version)
+                return dumps(
+                    self.faults.server_error(),
+                    rpcid=rpcid, version=version
+                )
             response_list.append(response_json)
         if not self._batch:
             # Ensure it wasn't a batch to begin with, then
@@ -100,25 +106,32 @@ class JSONRPCParser(BaseRPCParser):
             return response_list[0]
         # Batch, return list
         return '[ %s ]' % ', '.join(response_list)
+        
+class JSONRPCLibraryWrapper(object):
+    
+    dumps = dumps
+    loads = loads
+    Fault = Fault
 
 class JSONRPCHandler(BaseRPCHandler):
     """
     Subclass this to add methods -- you can treat them
     just like normal methods, this handles the JSON formatting.
     """
-    _RPC_ = JSONRPCParser(jsonrpclib)
+    _RPC_ = JSONRPCParser(JSONRPCLibraryWrapper)
 
 if __name__ == '__main__':
     # Example Implementation
     import sys
-    from base import start_server
-    from base import TestRPCHandler
+    from tornadorpc.base import start_server
+    from tornadorpc.base import TestRPCHandler
 
     class TestJSONRPC(TestRPCHandler):
-        _RPC_ = JSONRPCParser(jsonrpclib)
+        _RPC_ = JSONRPCParser(JSONRPCLibraryWrapper)
     
     port = 8181
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
-    
+        
+    print 'Starting server on port %s' % port
     start_server(TestJSONRPC, port=port)

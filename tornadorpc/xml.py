@@ -32,7 +32,7 @@ from version 2.3 on.
 
 """
 
-from base import BaseRPCParser, BaseRPCHandler
+from tornadorpc.base import BaseRPCParser, BaseRPCHandler
 import xmlrpclib
 import types
 
@@ -86,7 +86,7 @@ class XMLRPCHandler(BaseRPCHandler):
 
 if __name__ == '__main__':
     # Test implementation
-    from base import TestRPCHandler, start_server
+    from tornadorpc.base import TestRPCHandler, start_server
     import sys
     
     port = 8282
@@ -99,4 +99,5 @@ if __name__ == '__main__':
         def system(self):
             return XMLRPCSystem(self)
 
-    start_server(TestJSONRPC, port=port)
+    print 'Starting server on port %s' % port
+    start_server(TestXMLRPC, port=port)
