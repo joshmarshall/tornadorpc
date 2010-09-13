@@ -352,6 +352,9 @@ class TestRPCHandler(BaseRPCHandler):
 
     def ping(self, x):
         return x
+        
+    def noargs(self):
+        return 'Works!'
 
     tree = TestMethodTree()
 

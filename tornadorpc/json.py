@@ -62,11 +62,13 @@ class JSONRPCParser(BaseRPCParser):
         if isbatch(request):
             self._batch = True
             for req in request:
-                req_tuple = (req['method'], req['params'])
+                req_tuple = (req['method'], req.get('params', []))
                 request_list.append(req_tuple)
         else:
-          self._requests = [request,]
-          request_list.append((request['method'], request['params']))
+            self._requests = [request,]
+            request_list.append(
+                (request['method'], request.get('params', []))
+            )
         return tuple(request_list)
 
     def parse_responses(self, responses):
