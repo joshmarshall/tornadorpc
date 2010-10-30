@@ -29,7 +29,7 @@ Tornado framework. Usage is pretty simple:
 
 It requires the jsonrpclib, which you can get from:
 
-    http://code.google.com/p/jsonrpclib/
+    http://github.com/joshmarshall/jsonrpclib
     
 Also, you will need one of the following JSON modules:
 * cjson

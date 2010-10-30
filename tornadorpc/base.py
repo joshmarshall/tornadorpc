@@ -22,7 +22,12 @@ You can use the utility functions like 'private' and 'start_server'.
 """
 
 from tornado.web import RequestHandler
+import tornado.web
+import tornado.ioloop
+import tornado.httpserver
 import types
+import types
+import traceback
 
 # Configuration element
 class Config(object):
@@ -150,18 +155,16 @@ class BaseRPCParser(object):
             return self.faults.invalid_params()
 
     def traceback(self, method_name='REQUEST', params=[]):
-        import traceback
         err_lines = traceback.format_exc().splitlines()
         err_title = "ERROR IN %s" % method_name
         if len(params) > 0:
-            err_title += ' - (PARAMS: %s)' % params
+            err_title = '%s - (PARAMS: %s)' % (err_title, repr(params))
         err_sep = ('-'*len(err_title))[:79]
         err_lines = [err_sep, err_title, err_sep]+err_lines
-        global config
         if config.verbose == True:
             if len(err_lines) >= 7 and config.short_errors:
                 # Minimum number of lines to see what happened
-                # Plust title and separators
+                # Plus title and separators
                 print '\n'.join(err_lines[0:4]+err_lines[-3:])
             else:
                 print '\n'.join(err_lines)
@@ -306,10 +309,6 @@ def start_server(handlers, route=r'/', port=8080):
     USAGE:
         start_server(handler_class, route=r'/', port=8181)
     """
-    import tornado.web
-    import tornado.ioloop
-    import tornado.httpserver
-    import types
     if type(handlers) not in (types.ListType, types.TupleType):
         handler = handlers
         handlers = [(route, handler),]
