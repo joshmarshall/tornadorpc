@@ -26,7 +26,6 @@ import tornado.web
 import tornado.ioloop
 import tornado.httpserver
 import types
-import types
 import traceback
 
 # Configuration element
