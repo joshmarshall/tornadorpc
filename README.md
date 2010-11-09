@@ -7,8 +7,19 @@ Batch support for both specifications. The JSON-RPC handler supports
 both the original 1.0 specification, as well as the new (proposed) 
 2.0 spec, which includes batch submission, keyword arguments, etc.
 
-It is licensed under the Apache License, Version 2.0
+Asynchronous request support has been added for methods which require 
+the use of asynchronous libraries (like Tornado's AsyncHTTPClient 
+library.)
+
+TornadoRPC is licensed under the Apache License, Version 2.0
 (http://www.apache.org/licenses/LICENSE-2.0.html).
+
+Mailing List
+------------
+If you have any questions, issues, or just use the library please feel 
+free to send a message to the mailing list at:
+
+    http://groups.google.com/group/tornadorpc
 
 Installation
 ------------
@@ -51,7 +62,7 @@ Tornado's website (http://www.tornadoweb.org). After installing Tornado
 to use the XML-RPC handler without any other libraries.
 
 The JSON-RPC handler requires my jsonrpclib library, which you can get 
-at http://github.com/joshmarshall/jsonrpclib/ It also requires a JSON 
+at http://github.com/joshmarshall/jsonrpclib . It also requires a JSON 
 library, although any distribution of Python past 2.5 should have it by 
 default. (Note: Some Linuxes only include a base Python install. On Ubuntu, 
 for instance, you may need to run `sudo apt-get install python-json` or 
@@ -59,15 +70,20 @@ for instance, you may need to run `sudo apt-get install python-json` or
 
 Usage
 -----
-The library is designed to be mostly transparent in usage. You simply extend 
-the XML/JSON RPCHandler class from either the tornadorpc.xml or the 
-tornado.json library, resepectively, and pass that handler in to the Tornado 
-framework just like any other handler. You treat parameters and responses just 
-like a normal method -- no need to worry about any formatting yourself.
+The library is designed to be mostly transparent in usage. You simply 
+extend the XML/JSON RPCHandler class from either the tornadorpc.xml or 
+the tornado.json library, resepectively, and pass that handler in to 
+the Tornado framework just like any other handler. 
+
+For any synchronous (normal) operation, you can just return the value
+you want sent to the client. However, if you use any asynchronous
+library (like Tornado's AsyncHTTPClient) you will want to call 
+self.result(RESULT) in your callback. See the Asynchronous section
+below for examples.
 
 XML-RPC Example
 ---------------
-For example, to set up a simple XML RPC server, this is all you need:
+To set up a simple XML RPC server, this is all you need:
 
 	from tornadorpc.xml import XMLRPCHandler
 	from tornadorpc import private, start_server
@@ -105,7 +121,8 @@ client with "dot-attribute" support:
 	class Tree(object):
 
 	    def power(self, base, power, modulo=None):
-	        return pow(base, power, modulo)
+	        result = pow(base, power, modulo)
+            return result
   
 	    def _private(self):
 	        # Won't be callable
@@ -128,6 +145,39 @@ implementation, or the jsonrpclib library (which you'd need for this to
 work anyway.) One of the benefits of the jsonrpclib is designed to be a 
 parallel implementation to the xmlrpclib, so syntax should be very similar 
 and it should be easy to experiment with existing apps.
+
+An example of client usage would be:
+
+    from jsonrpclib import Server
+    server = Server('http://localhost:8080')
+    result = server.tree.power(2, 6)
+    # result should equal 64
+
+Asynchronous Example
+--------------------
+To indicate that a request is asynchronous, simply use the "async" 
+decorator, and call "self.result(RESULT)" in your callback. Please note
+that this will only work in the RPCHandler methods, not in any sub-tree
+methods since they do not have access to the handler's result() method.
+
+Here is an example that uses Tornado's AsyncHTTPClient with a callback:
+
+    from tornadorpc import async
+    from tornadorpc.xml import XMLRPCHandler
+    from tornado.httpclient import AsyncHTTPClient
+
+    class Handler(XMLRPCHandler):
+        
+        @async
+        def external(self, url):
+            client = AsyncHTTPClient()
+            client.fetch(url, self._handle_response)
+            
+        def _handle_response(self, response):
+            # The underscore will make it private automatically
+            # You could also use @private if you wished
+            # This returns the status code of the request
+            self.result(response.code)
 
 Debugging
 ---------
@@ -161,12 +211,22 @@ To change the configuration, look over the following:
 	from tornadorpc import config
 	config.verbose = False
 	config.short_errors = False
+    
+Tests
+-----
+To run some basic tests, enter the following in the same directory that
+this README is in:
 
-
+    python run_tests.py
+    
+This will test a few basic utilites and the XMLRPC system. If you wish
+to test the JSONRPC system, run the following:
+    
+    python run_tests.py --json
+    
 TODO
 ----
 * Add unit tests
-* Explore non-blocking techniques
 * Add logging mechanism
 * Add proper HTTP codes for failures
 * Optimize

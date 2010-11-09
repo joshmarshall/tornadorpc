@@ -27,6 +27,7 @@ import tornado.ioloop
 import tornado.httpserver
 import types
 import traceback
+from tornadorpc.utils import getcallargs
 
 # Configuration element
 class Config(object):
@@ -34,6 +35,7 @@ class Config(object):
     short_errors = True
 
 config = Config()
+
 
 class BaseRPCParser(object):
     """
@@ -55,6 +57,8 @@ class BaseRPCParser(object):
             decode = getattr(library, 'loads')
         self.encode = encode
         self.decode = decode
+        self.requests_in_progress = 0
+        self.responses = []
 
     @property
     def faults(self):
@@ -89,16 +93,9 @@ class BaseRPCParser(object):
                 # No idea, hopefully the handler knows what it
                 # is doing.
                 return requests
-        responses = []
+        self.handler._requests = len(requests)
         for request in requests:
-            response = self.dispatch(request[0], request[1])
-            responses.append(response)
-        responses = tuple(responses)
-        response_text = self.parse_responses(responses)
-        if type(response_text) not in types.StringTypes:
-            # Likely a fault, or something messed up
-            response_text = self.encode(response_text)
-        return response_text
+            self.dispatch(request[0], request[1])
         
     def dispatch(self, method_name, params):
         """
@@ -110,7 +107,7 @@ class BaseRPCParser(object):
         """
         if method_name in dir(RequestHandler):
             # Pre-existing, not an implemented attribute
-            return self.faults.method_not_found()
+            return self.handler.result(self.faults.method_not_found())
         method = self.handler
         method_list = dir(method)
         method_list.sort()
@@ -119,39 +116,70 @@ class BaseRPCParser(object):
             for attr_name in attr_tree:
                 method = self.check_method(attr_name, method)
         except AttributeError:
-            return self.faults.method_not_found()
+            return self.handler.result(self.faults.method_not_found())
         if not callable(method):
             # Not callable, so not a method
-            return self.faults.method_not_found()
+            return self.handler.result(self.faults.method_not_found())
         if method_name.startswith('_') or \
                 ('private' in dir(method) and method.private is True):
             # No, no. That's private.
-            return self.faults.method_not_found()
+            return self.handler.result(self.faults.method_not_found())
+        args = []
+        kwargs = {}
         if type(params) is types.DictType:
-            # Keyword arguments
-            try:
-                response = method(**params)
-            except TypeError:
-                return self.faults.invalid_params()
-            except:
-                # We should log here...bare excepts are evil.
-                self.traceback(method_name, params)
-                return self.faults.internal_error()
-            return response
-        elif type(params) in (types.ListType, types.TupleType):
-            # Positional arguments
-            try:
-                response = method(*params)
-            except TypeError:
-                return self.faults.invalid_params()
-            except:
-                # Once again, we need to log here
-                self.traceback(method_name, params)
-                return self.faults.internal_error()
-            return response
+            # The parameters are keyword-based
+            kwargs = params
+        elif type(params) in (list, tuple):
+            # The parameters are positional
+            args = params
         else:
             # Bad argument formatting?
-            return self.faults.invalid_params()
+            return self.handler.result(self.faults.invalid_params())
+        # Validating call arguments
+        try:
+            final_kwargs, extra_args = getcallargs(method, *args, **kwargs)
+        except TypeError:
+            return self.handler.result(self.faults.invalid_params())
+        try:
+            response = method(*extra_args, **final_kwargs)
+        except Exception:
+            self.traceback(method_name, params)
+            return self.handler.result(self.faults.internal_error())
+        
+        if 'async' in dir(method) and method.async:
+            # Asynchronous response -- the method should have called
+            # self.result(RESULT_VALUE)
+            if response != None:
+                # This should be deprecated to use self.result
+                message = "Async results should use 'self.result()'"
+                message += " Return result will be ignored."
+                logging.warning(message)
+        else:
+            # Synchronous result -- we call result manually.
+            return self.handler.result(response)
+            
+    def response(self, handler):
+        """ 
+        This is the callback for a single finished dispatch.
+        Once all the dispatches have been run, it calls the
+        parser library to parse responses and then calls the
+        handler's asynch method.
+        """
+        handler._requests -= 1
+        if handler._requests > 0:
+            return
+        # We are finished with requests, send response
+        if handler._RPC_finished:
+            # We've already sent the response
+            raise Exception("Error trying to send response twice.")
+        handler._RPC_finished = True
+        responses = tuple(handler._results)
+        response_text = self.parse_responses(responses)
+        if type(response_text) not in types.StringTypes:
+            # Likely a fault, or something messed up
+            response_text = self.encode(response_text)
+        # Calling the asynch callback
+        handler.on_result(response_text)
 
     def traceback(self, method_name='REQUEST', params=[]):
         err_lines = traceback.format_exc().splitlines()
@@ -184,7 +212,7 @@ class BaseRPCParser(object):
         the following:
         ( ('add', [5,4]), ('add', {'x':5, 'y':4}) )
         """
-        return ([], []) 
+        return ([], [])
     
     def parse_responses(self, responses):
         """
@@ -210,21 +238,34 @@ class BaseRPCParser(object):
 class BaseRPCHandler(RequestHandler):
     """
     This is the base handler to be subclassed by the actual
-    implementations and by the end user. The only attribute
-    this adds to the Tornado request handler is '_RPC_', which
-    is what holds the RPC Parser subclassed from the
-    BaseRPCParser above.
+    implementations and by the end user.
     """
     _RPC_ = None
+    _results = None
+    _requests = 0
+    _RPC_finished = False
     
+    @tornado.web.asynchronous
     def post(self):
         # Very simple -- dispatches request body to the parser
         # and returns the output
+        self._results = []
         request_body = self.request.body
-        response_text = self._RPC_.run(self, request_body)
+        self._RPC_.run(self, request_body)
+        
+    def result(self, result, *results):
+        """ Use this to return a result. """
+        if results:
+            results = [result,]+results
+        else:
+            results = result
+        self._results.append(results)
+        self._RPC_.response(self)
+        
+    def on_result(self, response_text):
+        """ Asynchronous callback. """
         self.set_header('Content-Type', self._RPC_.content_type)
-        self.write(response_text)
-        return        
+        self.finish(response_text)
     
 class FaultMethod(object):
     """
@@ -286,7 +327,7 @@ class Faults(object):
 Utility Functions
 """
 
-def private(obj):
+def private(func):
     """
     Use this to make a method private.
     It is intended to be used as a decorator.
@@ -294,11 +335,19 @@ def private(obj):
     create and set the 'private' variable to True 
     on the tree object itself.
     """
-    class PrivateMethod(object):
-        def __init__(self):
-            self.private = True
-        __call__ = obj
-    return PrivateMethod()
+    func.private = True
+    return func
+    
+def async(func):
+    """
+    Use this to make a method asynchronous
+    It is intended to be used as a decorator.
+    Make sure you call "self.result" on any
+    async method. Also, trees do not currently
+    support async methods.
+    """
+    func.async = True
+    return func
 
 def start_server(handlers, route=r'/', port=8080):
     """

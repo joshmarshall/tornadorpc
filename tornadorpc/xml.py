@@ -47,9 +47,7 @@ class XMLRPCSystem(object):
         for call in calls:
             method_name = call['methodName']
             params = call['params']
-            response = self._dispatch(method_name, params)
-            response_list.append((response,))
-        return response_list
+            self._dispatch(method_name, params)
 
 
 class XMLRPCParser(BaseRPCParser):
