@@ -63,8 +63,11 @@ class XMLRPCParser(BaseRPCParser):
         return ((method_name, params),)
 
     def parse_responses(self, responses):
-        if isinstance(responses, xmlrpclib.Fault):
-            return xmlrpclib.dumps(responses)
+        try:
+            if isinstance(responses[0], xmlrpclib.Fault):
+                return xmlrpclib.dumps(responses[0])
+        except IndexError:
+            pass
         try:
             response_xml = xmlrpclib.dumps(responses, methodresponse=True)
         except TypeError:

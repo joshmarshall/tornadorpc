@@ -89,6 +89,9 @@ class XMLRPCTests(RPCTests, unittest.TestCase):
         
     def test_private(self):
         client = self.get_client()
-        result = client.private()
-        self.assertTrue(result['faultCode'] == -32601)
+        try:
+            client.private()
+            self.fail("xmlrpclib.Fault should have been raised")
+        except xmlrpclib.Fault, f:
+            self.assertEqual(-32601, f.faultCode)
 
