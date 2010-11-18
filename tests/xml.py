@@ -1,5 +1,6 @@
 import unittest
 import xmlrpclib
+import urllib2
 import time
 import threading
 from tornadorpc.xml import XMLRPCHandler
@@ -73,9 +74,12 @@ class RPCTests(object):
     
     def setUp(self):
         server = TestServer.start(self.handler, self.port)
-    
+
+    def get_url(self):
+        return 'http://localhost:%d' % self.port
+
     def get_client(self):
-        client = xmlrpclib.ServerProxy('http://localhost:%d' % self.port)
+        client = xmlrpclib.ServerProxy(self.get_url())
         return client
         
     def test_tree(self):
@@ -127,6 +131,13 @@ class XMLRPCTests(RPCTests, unittest.TestCase):
             self.fail('xmlrpclib.Fault should have been raised')
         except xmlrpclib.Fault, f:
             self.assertEqual(-32603, f.faultCode)
+
+    def test_parse_error(self):
+        try:
+            print self.get_url()
+            urllib2.urlopen(self.get_url(), '<garbage/>')
+        except xmlrpclib.Fault, f:
+            self.assertEqual(-32700, f.faultCode)
 
     def test_handler_return_fault(self):
         client = self.get_client()

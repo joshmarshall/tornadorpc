@@ -79,16 +79,21 @@ class BaseRPCParser(object):
             requests = self.parse_request(request_body)
         except:
             self.traceback()
-            return self.faults.parse_error()
+            return self.handler.result(self.faults.parse_error())
         if type(requests) is not types.TupleType:
             # SHOULD be the result of a fault call,
             # according tothe parse_request spec below.
             if type(requests) in types.StringTypes:
                 # Should be the response text of a fault
                 return requests
-            elif 'response' in dir(requests):
+            elif hasattr(requests, 'response'):
                 # Fault types should have a 'response' method
                 return requests.response()
+            elif hasattr(requests, 'faultCode'):
+                # XML-RPC fault types need to be properly dispatched. This
+                # should only happen if there was an error parsing the
+                # request above.
+                return self.handler.result(requests)
             else:
                 # No idea, hopefully the handler knows what it
                 # is doing.
