@@ -30,15 +30,24 @@ class TestHandler(object):
         
     def _handle_response(self, response):
         self.result(response.code)
-        
+    
     @private
     def private(self):
         # Should not be callable
         return False
-        
+
+    def _private(self):
+        # Should not be callable
+        return False
+
+    def internal_error(self):
+        raise Exception("Yar matey!")
+
 class TestXMLHandler(XMLRPCHandler, TestHandler):
-    pass
-        
+
+    def return_fault(self, code, msg):
+        return xmlrpclib.Fault(code, msg)
+
 class TestServer(object):
 
     threads = {}
@@ -91,7 +100,41 @@ class XMLRPCTests(RPCTests, unittest.TestCase):
         client = self.get_client()
         try:
             client.private()
-            self.fail("xmlrpclib.Fault should have been raised")
+            self.fail('xmlrpclib.Fault should have been raised')
         except xmlrpclib.Fault, f:
             self.assertEqual(-32601, f.faultCode)
 
+    def test_private_by_underscore(self):
+        client = self.get_client()
+        try:
+            client._private()
+            self.fail('xmlrpclib.Fault should have been raised')
+        except xmlrpclib.Fault, f:
+            self.assertEqual(-32601, f.faultCode)
+
+    def test_invalid_params(self):
+        client = self.get_client()
+        try:
+            client.return_fault('a', 'b', 'c')
+            self.fail('xmlrpclib.Fault should have been raised')
+        except xmlrpclib.Fault, f:
+            self.assertEqual(-32602, f.faultCode)
+
+    def test_internal_error(self):
+        client = self.get_client()
+        try:
+            client.internal_error()
+            self.fail('xmlrpclib.Fault should have been raised')
+        except xmlrpclib.Fault, f:
+            self.assertEqual(-32603, f.faultCode)
+
+    def test_handler_return_fault(self):
+        client = self.get_client()
+        fault_code = 100
+        fault_string = 'Yar matey!'
+        try:
+            client.return_fault(fault_code, fault_string)
+            self.fail('xmlrpclib.Fault should have been raised')
+        except xmlrpclib.Fault, f:
+            self.assertEqual(fault_code, f.faultCode)
+            self.assertEqual(fault_string, f.faultString)
