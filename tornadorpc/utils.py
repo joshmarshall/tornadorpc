@@ -50,7 +50,7 @@ def getcallargs(func, *positional, **named):
                 extra_args.append(value)
     if defaults:
         reverse_args = args[:]
-        reverse_args.reverse()
+#        reverse_args.reverse()
         for i in range(len(defaults)):
             arg_key = reverse_args[i]
             final_kwargs.setdefault(arg_key, defaults[i])
