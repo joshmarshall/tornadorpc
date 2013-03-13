@@ -49,11 +49,8 @@ def getcallargs(func, *positional, **named):
             else:
                 extra_args.append(value)
     if defaults:
-        reverse_args = args[:]
-#        reverse_args.reverse()
-        for i in range(len(defaults)):
-            arg_key = reverse_args[i]
-            final_kwargs.setdefault(arg_key, defaults[i])
+        for kwarg, default in zip(args[-len(defaults):], defaults):
+            final_kwargs.setdefault(kwarg, default)
     for arg in args:
         if arg not in final_kwargs:
             raise TypeError("Not all arguments supplied. (%s)", arg)
