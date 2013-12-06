@@ -169,7 +169,7 @@ class BaseRPCParser(object):
         This is the callback for a single finished dispatch.
         Once all the dispatches have been run, it calls the
         parser library to parse responses and then calls the
-        handler's asynch method.
+        handler's async method.
         """
         handler._requests -= 1
         if handler._requests > 0:
