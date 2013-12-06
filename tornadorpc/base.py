@@ -155,6 +155,7 @@ class BaseRPCParser(object):
             # Asynchronous response -- the method should have called
             # self.result(RESULT_VALUE)
             if response != None:
+                import logging
                 # This should be deprecated to use self.result
                 message = "Async results should use 'self.result()'"
                 message += " Return result will be ignored."
