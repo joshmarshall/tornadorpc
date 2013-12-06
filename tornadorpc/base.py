@@ -110,7 +110,7 @@ class BaseRPCParser(object):
         Handler class. Currently supports only positional
         or keyword arguments, not mixed. 
         """
-        if method_name in dir(RequestHandler):
+        if hasattr(RequestHandler, method_name):
             # Pre-existing, not an implemented attribute
             return self.handler.result(self.faults.method_not_found())
         method = self.handler
@@ -126,7 +126,7 @@ class BaseRPCParser(object):
             # Not callable, so not a method
             return self.handler.result(self.faults.method_not_found())
         if method_name.startswith('_') or \
-                ('private' in dir(method) and method.private is True):
+                getattr(method, 'private', False) is True:
             # No, no. That's private.
             return self.handler.result(self.faults.method_not_found())
         args = []
@@ -150,8 +150,8 @@ class BaseRPCParser(object):
         except Exception:
             self.traceback(method_name, params)
             return self.handler.result(self.faults.internal_error())
-        
-        if 'async' in dir(method) and method.async:
+
+        if getattr(method, 'async', False):
             # Asynchronous response -- the method should have called
             # self.result(RESULT_VALUE)
             if response != None:
@@ -236,7 +236,7 @@ class BaseRPCParser(object):
         if attr_name.startswith('_'):
             raise AttributeError('Private object or method.')
         attr = getattr(obj, attr_name)
-        if 'private' in dir(attr) and attr.private == True:
+        if getattr(attr, 'private', False):
             raise AttributeError('Private object or method.')
         return attr
 
