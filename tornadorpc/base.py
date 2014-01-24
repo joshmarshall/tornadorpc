@@ -21,6 +21,8 @@ directly, but rather though the XML or JSON RPC implementations.
 You can use the utility functions like 'private' and 'start_server'.
 """
 
+import logging
+
 from tornado.web import RequestHandler
 import tornado.web
 import tornado.ioloop
