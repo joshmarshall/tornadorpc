@@ -54,7 +54,6 @@ class XMLRPCTests(RPCTests, unittest.TestCase):
 
     def test_parse_error(self):
         try:
-            print self.get_url()
             urllib2.urlopen(self.get_url(), '<garbage/>')
         except xmlrpclib.Fault, f:
             self.assertEqual(-32700, f.faultCode)
