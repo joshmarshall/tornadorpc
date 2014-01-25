@@ -1,22 +1,13 @@
 #!/usr/bin/env/python
-"""
-Copyright 2009 Josh Marshall
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+import setuptools
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+with open("README.md") as readme:
+    long_description = readme.read()
+    with open("README", "w") as pypi_readme:
+        pypi_readme.write(long_description)
 
-import distutils.core
-
-distutils.core.setup(
+setuptools.setup(
     name="tornadorpc",
     version="0.1.1",
     packages=["tornadorpc"],
@@ -26,5 +17,6 @@ distutils.core.setup(
     url="http://code.google.com/p/tornadorpc/",
     license="http://www.apache.org/licenses/LICENSE-2.0",
     description="TornadoRPC is a an implementation of both JSON-RPC "
-        "and XML-RPC handlers for the Tornado framework."
+        "and XML-RPC handlers for the Tornado framework.",
+    long_description=long_description
 )
