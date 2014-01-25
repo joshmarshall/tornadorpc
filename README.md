@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/joshmarshall/tornadorpc.png?branch=master)](https://travis-ci.org/joshmarshall/tornadorpc)
 TORNADO-RPC
 ===========
 This library is an implementation of both the JSON-RPC and the

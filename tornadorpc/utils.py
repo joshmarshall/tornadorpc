@@ -4,24 +4,24 @@ Various utilities for the TornadoRPC library.
 
 import inspect
 
+
 def getcallargs(func, *positional, **named):
     """
-    Simple implementation of inspect.getcallargs function in 
+    Simple implementation of inspect.getcallargs function in
     the Python 2.7 standard library.
-    
+
     Takes a function and the position and keyword arguments and
     returns a dictionary with the appropriate named arguments.
     Raises an exception if invalid arguments are passed.
     """
     args, varargs, varkw, defaults = inspect.getargspec(func)
-    fname = func.__name__
 
     final_kwargs = {}
     extra_args = []
     has_self = inspect.ismethod(func) and func.im_self is not None
     if has_self:
-        self_key = args.pop(0)
-    
+        args.pop(0)
+
     # (Since our RPC supports only positional OR named.)
     if named:
         for key, value in named.iteritems():
