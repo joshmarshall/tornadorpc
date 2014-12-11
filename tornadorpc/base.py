@@ -7,6 +7,7 @@ Tornado framework. The classes in this library should not be used
 directly, but rather though the XML or JSON RPC implementations.
 You can use the utility functions like 'private' and 'start_server'.
 """
+from jsonrpclib import Fault
 
 from tornado.web import RequestHandler
 import tornado.web
@@ -137,8 +138,8 @@ class BaseRPCParser(object):
         try:
             response = method(*extra_args, **final_kwargs)
         except Exception:
-            self.traceback(method_name, params)
-            return self.handler.result(self.faults.internal_error())
+            err_msg = self.traceback(method_name, params)
+            return self.handler.result(self.faults.custom_error(err_msg))
 
         if getattr(method, 'async', False):
             # Asynchronous response -- the method should have called
@@ -175,6 +176,7 @@ class BaseRPCParser(object):
 
     def traceback(self, method_name='REQUEST', params=[]):
         err_lines = traceback.format_exc().splitlines()
+        last_line = err_lines[len(err_lines) - 1]
         err_title = "ERROR IN %s" % method_name
         if len(params) > 0:
             err_title = '%s - (PARAMS: %s)' % (err_title, repr(params))
@@ -188,7 +190,7 @@ class BaseRPCParser(object):
             else:
                 print '\n'.join(err_lines)
         # Log here
-        return
+        return last_line
 
     def parse_request(self, request_body):
         """
@@ -317,6 +319,10 @@ class Faults(object):
         else:
             message = ' '.join(map(str.capitalize, attr.split('_')))
         fault = FaultMethod(self.fault, self.codes[attr], message)
+        return fault
+
+    def custom_error(self, errmsg):
+        fault = Fault(-32000, errmsg)
         return fault
 
 
