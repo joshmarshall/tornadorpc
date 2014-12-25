@@ -26,7 +26,7 @@ From Python 2.6 on, simplejson is included in the standard
 distribution as the "json" module.
 """
 
-from tornadorpc.base import BaseRPCParser, BaseRPCHandler
+from tornadorpc.base import BaseRPCParser, BaseRPCHandler, config
 import jsonrpclib
 from jsonrpclib.jsonrpc import isbatch, isnotification, Fault
 from jsonrpclib.jsonrpc import dumps, loads
@@ -37,6 +37,8 @@ class JSONRPCParser(BaseRPCParser):
     content_type = 'application/json-rpc'
 
     def parse_request(self, request_body):
+        if config.logger:
+            config.logger('request', request_body)
         try:
             request = loads(request_body)
         except:
@@ -49,20 +51,25 @@ class JSONRPCParser(BaseRPCParser):
         if isbatch(request):
             self._batch = True
             for req in request:
-                req_tuple = (req['method'], req.get('params', []))
+                req_tuple = (req['method'], req.get('params', []), req['id'])
                 request_list.append(req_tuple)
         else:
             self._requests = [request]
             request_list.append(
-                (request['method'], request.get('params', []))
+                (request['method'], request.get('params', []), request['id'])
             )
         return tuple(request_list)
 
+    def log_response(self, response_json):
+        if config.logger:
+            config.logger('response', response_json)
+        return response_json
+
     def parse_responses(self, responses):
         if isinstance(responses, Fault):
-            return dumps(responses)
+            return self.log_response(dumps(responses))
         if len(responses) != len(self._requests):
-            return dumps(self.faults.internal_error())
+            return self.log_response(dumps(self.faults.internal_error()))
         response_list = []
         for i in range(0, len(responses)):
             request = self._requests[i]
@@ -81,10 +88,10 @@ class JSONRPCParser(BaseRPCParser):
                     rpcid=rpcid, methodresponse=True
                 )
             except TypeError:
-                return dumps(
+                return self.log_response(dumps(
                     self.faults.server_error(),
                     rpcid=rpcid, version=version
-                )
+                ))
             response_list.append(response_json)
         if not self._batch:
             # Ensure it wasn't a batch to begin with, then
@@ -92,9 +99,9 @@ class JSONRPCParser(BaseRPCParser):
             # a notification.
             if len(response_list) < 1:
                 return ''
-            return response_list[0]
+            return self.log_response(response_list[0])
         # Batch, return list
-        return '[ %s ]' % ', '.join(response_list)
+        return self.log_response('[ %s ]' % ', '.join(response_list))
 
 
 class JSONRPCLibraryWrapper(object):
