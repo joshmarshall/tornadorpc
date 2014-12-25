@@ -22,6 +22,10 @@ from tornadorpc.utils import getcallargs
 class Config(object):
     verbose = True
     short_errors = True
+    # logger() is function with params:
+    #     action - one of the following strings: 'request', 'response' or 'error'
+    #     body   - json text of the request or response. Or stacktrace if error
+    logger = None
 
 config = Config()
 
@@ -185,14 +189,17 @@ class BaseRPCParser(object):
             err_title = '%s - (%sPARAMS: %s)' % (err_title, id_str, repr(params))
         err_sep = ('-'*len(err_title))[:79]
         err_lines = [err_sep, err_title, err_sep]+err_lines
-        if config.verbose:
-            if len(err_lines) >= 7 and config.short_errors:
-                # Minimum number of lines to see what happened
-                # Plus title and separators
-                print '\n'.join(err_lines[0:4]+err_lines[-3:])
-            else:
-                print '\n'.join(err_lines)
-        # Log here
+        if len(err_lines) >= 7 and config.short_errors:
+            # Minimum number of lines to see what happened
+            # Plus title and separators
+            stacktrace = '\n'.join(err_lines[0:4]+err_lines[-3:])
+        else:
+            stacktrace = '\n'.join(err_lines)
+        if config.logger:
+            config.logger('error', stacktrace)
+        else:
+            if config.verbose:
+                print stacktrace
         return last_line
 
     def parse_request(self, request_body):
