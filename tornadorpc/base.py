@@ -94,7 +94,11 @@ class BaseRPCParser(object):
                 return requests
         self.handler._requests = len(requests)
         for request in requests:
-            self.dispatch(request[0], request[1], request[2])
+            try:
+                id = request[2]
+            except:
+                id = ""
+            self.dispatch(request[0], request[1], id)
 
     def dispatch(self, method_name, params, id=None):
         """
