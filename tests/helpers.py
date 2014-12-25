@@ -97,6 +97,6 @@ class RPCTests(object):
         url = 'http://www.google.com'
         client = self.get_client()
         result = client.async(url)
-        # Are you sure what result
+        # Are you sure what there is no network problems?
         if result != 599:
             self.assertEqual(result, 200)
