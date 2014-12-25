@@ -71,7 +71,7 @@ class BaseRPCParser(object):
             return self.handler.result(self.faults.parse_error())
         if not isinstance(requests, types.TupleType):
             # SHOULD be the result of a fault call,
-            # according tothe parse_request spec below.
+            # according to the parse_request spec below.
             if isinstance(requests, basestring):
                 # Should be the response text of a fault
                 # This will break in Python 3.x
