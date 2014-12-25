@@ -90,9 +90,9 @@ class BaseRPCParser(object):
                 return requests
         self.handler._requests = len(requests)
         for request in requests:
-            self.dispatch(request[0], request[1])
+            self.dispatch(request[0], request[1], request[2])
 
-    def dispatch(self, method_name, params):
+    def dispatch(self, method_name, params, id=None):
         """
         This method walks the attribute tree in the method
         and passes the parameters, either in positional or
@@ -138,7 +138,7 @@ class BaseRPCParser(object):
         try:
             response = method(*extra_args, **final_kwargs)
         except Exception:
-            err_msg = self.traceback(method_name, params)
+            err_msg = self.traceback(method_name, params, id)
             return self.handler.result(self.faults.custom_error(err_msg))
 
         if getattr(method, 'async', False):
@@ -174,12 +174,15 @@ class BaseRPCParser(object):
         # Calling the async callback
         handler.on_result(response_text)
 
-    def traceback(self, method_name='REQUEST', params=[]):
+    def traceback(self, method_name='REQUEST', params=[], id=None):
         err_lines = traceback.format_exc().splitlines()
         last_line = err_lines[len(err_lines) - 1]
         err_title = "ERROR IN %s" % method_name
+        id_str = ""
+        if id:
+            id_str = "ID: %s, " % id
         if len(params) > 0:
-            err_title = '%s - (PARAMS: %s)' % (err_title, repr(params))
+            err_title = '%s - (%sPARAMS: %s)' % (err_title, id_str, repr(params))
         err_sep = ('-'*len(err_title))[:79]
         err_lines = [err_sep, err_title, err_sep]+err_lines
         if config.verbose:
