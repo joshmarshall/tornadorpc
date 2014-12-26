@@ -50,7 +50,7 @@ class XMLRPCTests(RPCTests, unittest.TestCase):
             client.internal_error()
             self.fail('xmlrpclib.Fault should have been raised')
         except xmlrpclib.Fault, f:
-            self.assertEqual(-32603, f.faultCode)
+            self.assertEqual(-32000, f.faultCode)
 
     def test_parse_error(self):
         try:
