@@ -7,7 +7,6 @@ Tornado framework. The classes in this library should not be used
 directly, but rather though the XML or JSON RPC implementations.
 You can use the utility functions like 'private' and 'start_server'.
 """
-from jsonrpclib import Fault
 
 from tornado.web import RequestHandler
 import tornado.web
@@ -336,7 +335,7 @@ class Faults(object):
         return fault
 
     def custom_error(self, errmsg):
-        fault = Fault(-32000, errmsg)
+        fault = self.fault(-32000, errmsg)
         return fault
 
 

@@ -19,7 +19,7 @@ from version 2.3 on.
 
 """
 
-from tornadorpc.base import BaseRPCParser, BaseRPCHandler
+from tornadorpc.base import BaseRPCParser, BaseRPCHandler, config
 import xmlrpclib
 
 
@@ -41,6 +41,8 @@ class XMLRPCParser(BaseRPCParser):
     content_type = 'text/xml'
 
     def parse_request(self, request_body):
+        if config.logger:
+            config.logger('request', request_body)
         try:
             params, method_name = xmlrpclib.loads(request_body)
         except:
@@ -48,17 +50,22 @@ class XMLRPCParser(BaseRPCParser):
             return self.faults.parse_error()
         return ((method_name, params),)
 
+    def log_response(self, response_xml):
+        if config.logger:
+            config.logger('response', response_xml)
+        return response_xml
+
     def parse_responses(self, responses):
         try:
             if isinstance(responses[0], xmlrpclib.Fault):
-                return xmlrpclib.dumps(responses[0])
+                return self.log_response(xmlrpclib.dumps(responses[0]))
         except IndexError:
             pass
         try:
             response_xml = xmlrpclib.dumps(responses, methodresponse=True)
         except TypeError:
-            return self.faults.internal_error()
-        return response_xml
+            return self.log_response(self.faults.internal_error())
+        return self.log_response(response_xml)
 
 
 class XMLRPCHandler(BaseRPCHandler):
