@@ -42,7 +42,7 @@ class XMLRPCParser(BaseRPCParser):
 
     def parse_request(self, request_body):
         if config.logger:
-            config.logger('request', request_body)
+            config.logger('request', request_body, handler=self.handler)
         try:
             params, method_name = xmlrpclib.loads(request_body)
         except:
@@ -52,7 +52,7 @@ class XMLRPCParser(BaseRPCParser):
 
     def log_response(self, response_xml, is_error=False):
         if config.logger:
-            config.logger('response', response_xml, is_error)
+            config.logger('response', response_xml, is_error, handler=self.handler)
         return response_xml
 
     def parse_responses(self, responses):

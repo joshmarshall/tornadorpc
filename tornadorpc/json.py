@@ -38,7 +38,7 @@ class JSONRPCParser(BaseRPCParser):
 
     def parse_request(self, request_body):
         if config.logger:
-            config.logger('request', request_body)
+            config.logger('request', request_body, handler=self.handler)
         try:
             request = loads(request_body)
         except:
@@ -62,7 +62,7 @@ class JSONRPCParser(BaseRPCParser):
 
     def log_response(self, response_json, is_error=False):
         if config.logger:
-            config.logger('response', response_json, is_error)
+            config.logger('response', response_json, is_error, handler=self.handler)
         return response_json
 
     def parse_responses(self, responses):

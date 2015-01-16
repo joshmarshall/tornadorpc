@@ -198,7 +198,7 @@ class BaseRPCParser(object):
         else:
             stacktrace = '\n'.join(err_lines)
         if config.logger:
-            config.logger(None, stacktrace, is_error=True)
+            config.logger(None, stacktrace, is_error=True, handler=self.handler)
         else:
             if config.verbose:
                 print stacktrace
