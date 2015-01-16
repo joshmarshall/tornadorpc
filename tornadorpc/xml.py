@@ -50,21 +50,21 @@ class XMLRPCParser(BaseRPCParser):
             return self.faults.parse_error()
         return ((method_name, params),)
 
-    def log_response(self, response_xml):
+    def log_response(self, response_xml, is_error=False):
         if config.logger:
-            config.logger('response', response_xml)
+            config.logger('response', response_xml, is_error)
         return response_xml
 
     def parse_responses(self, responses):
         try:
             if isinstance(responses[0], xmlrpclib.Fault):
-                return self.log_response(xmlrpclib.dumps(responses[0]))
+                return self.log_response(xmlrpclib.dumps(responses[0]), is_error=True)
         except IndexError:
             pass
         try:
             response_xml = xmlrpclib.dumps(responses, methodresponse=True)
         except TypeError:
-            return self.log_response(self.faults.internal_error())
+            return self.log_response(self.faults.internal_error(), is_error=True)
         return self.log_response(response_xml)
 
 

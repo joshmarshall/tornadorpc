@@ -184,14 +184,13 @@ class BaseRPCParser(object):
     def traceback(self, method_name='REQUEST', params=[], id=None):
         err_lines = traceback.format_exc().splitlines()
         last_line = err_lines[len(err_lines) - 1]
-        err_title = "ERROR IN %s" % method_name
+        err_title = "METHOD: %s" % method_name
         id_str = ""
         if id:
             id_str = "ID: %s, " % id
         if len(params) > 0:
-            err_title = '%s - (%sPARAMS: %s)' % (err_title, id_str, repr(params))
-        err_sep = ('-'*len(err_title))[:79]
-        err_lines = [err_sep, err_title, err_sep]+err_lines
+            err_title = '%s, %sPARAMS: %s' % (err_title, id_str, repr(params))
+        err_lines = [err_title]+err_lines
         if len(err_lines) >= 7 and config.short_errors:
             # Minimum number of lines to see what happened
             # Plus title and separators
@@ -199,7 +198,7 @@ class BaseRPCParser(object):
         else:
             stacktrace = '\n'.join(err_lines)
         if config.logger:
-            config.logger('error', stacktrace)
+            config.logger(None, stacktrace, is_error=True)
         else:
             if config.verbose:
                 print stacktrace

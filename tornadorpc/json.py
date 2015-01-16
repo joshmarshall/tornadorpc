@@ -60,16 +60,16 @@ class JSONRPCParser(BaseRPCParser):
             )
         return tuple(request_list)
 
-    def log_response(self, response_json):
+    def log_response(self, response_json, is_error=False):
         if config.logger:
-            config.logger('response', response_json)
+            config.logger('response', response_json, is_error)
         return response_json
 
     def parse_responses(self, responses):
         if isinstance(responses, Fault):
-            return self.log_response(dumps(responses))
+            return self.log_response(dumps(responses), is_error=True)
         if len(responses) != len(self._requests):
-            return self.log_response(dumps(self.faults.internal_error()))
+            return self.log_response(dumps(self.faults.internal_error()), is_error=True)
         response_list = []
         for i in range(0, len(responses)):
             request = self._requests[i]
@@ -91,7 +91,7 @@ class JSONRPCParser(BaseRPCParser):
                 return self.log_response(dumps(
                     self.faults.server_error(),
                     rpcid=rpcid, version=version
-                ))
+                ), is_error=True)
             response_list.append(response_json)
         if not self._batch:
             # Ensure it wasn't a batch to begin with, then
