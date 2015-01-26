@@ -22,8 +22,11 @@ class Config(object):
     verbose = True
     short_errors = True
     # logger() is function with params:
-    #     action - one of the following strings: 'request', 'response' or 'error'
-    #     body   - json text of the request or response. Or stacktrace if error
+    #     action - one of the following strings: 'request', 'response'
+    #     body - json text of the request or response. Or stacktrace if error
+    #     method - jsonrpc-method
+    #     is_error - True if error
+    #     handler - RequestHandler instance or None
     logger = None
 
 config = Config()
