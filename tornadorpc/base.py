@@ -21,6 +21,13 @@ from tornadorpc.utils import getcallargs
 class Config(object):
     verbose = True
     short_errors = True
+    # logger() is function with params:
+    #     action - one of the following strings: 'request', 'response'
+    #     body - json text of the request or response. Or stacktrace if error
+    #     method - jsonrpc-method
+    #     is_error - True if error
+    #     handler - RequestHandler instance or None
+    logger = None
 
 config = Config()
 
@@ -70,7 +77,7 @@ class BaseRPCParser(object):
             return self.handler.result(self.faults.parse_error())
         if not isinstance(requests, types.TupleType):
             # SHOULD be the result of a fault call,
-            # according tothe parse_request spec below.
+            # according to the parse_request spec below.
             if isinstance(requests, basestring):
                 # Should be the response text of a fault
                 # This will break in Python 3.x
@@ -89,9 +96,13 @@ class BaseRPCParser(object):
                 return requests
         self.handler._requests = len(requests)
         for request in requests:
-            self.dispatch(request[0], request[1])
+            try:
+                id = request[2]
+            except:
+                id = ""
+            self.dispatch(request[0], request[1], id)
 
-    def dispatch(self, method_name, params):
+    def dispatch(self, method_name, params, id=None):
         """
         This method walks the attribute tree in the method
         and passes the parameters, either in positional or
@@ -137,8 +148,8 @@ class BaseRPCParser(object):
         try:
             response = method(*extra_args, **final_kwargs)
         except Exception:
-            self.traceback(method_name, params)
-            return self.handler.result(self.faults.internal_error())
+            err_msg = self.traceback(method_name, params, id)
+            return self.handler.result(self.faults.custom_error(err_msg))
 
         if getattr(method, 'async', False):
             # Asynchronous response -- the method should have called
@@ -173,22 +184,28 @@ class BaseRPCParser(object):
         # Calling the async callback
         handler.on_result(response_text)
 
-    def traceback(self, method_name='REQUEST', params=[]):
+    def traceback(self, method_name='REQUEST', params=[], id=None):
         err_lines = traceback.format_exc().splitlines()
-        err_title = "ERROR IN %s" % method_name
+        last_line = err_lines[len(err_lines) - 1]
+        err_title = "METHOD: %s" % method_name
+        id_str = ""
+        if id:
+            id_str = "ID: %s, " % id
         if len(params) > 0:
-            err_title = '%s - (PARAMS: %s)' % (err_title, repr(params))
-        err_sep = ('-'*len(err_title))[:79]
-        err_lines = [err_sep, err_title, err_sep]+err_lines
-        if config.verbose:
-            if len(err_lines) >= 7 and config.short_errors:
-                # Minimum number of lines to see what happened
-                # Plus title and separators
-                print '\n'.join(err_lines[0:4]+err_lines[-3:])
-            else:
-                print '\n'.join(err_lines)
-        # Log here
-        return
+            err_title = '%s, %sPARAMS: %s' % (err_title, id_str, repr(params))
+        err_lines = [err_title]+err_lines
+        if len(err_lines) >= 7 and config.short_errors:
+            # Minimum number of lines to see what happened
+            # Plus title and separators
+            stacktrace = '\n'.join(err_lines[0:4]+err_lines[-3:])
+        else:
+            stacktrace = '\n'.join(err_lines)
+        if config.logger:
+            config.logger(None, stacktrace, is_error=True, handler=self.handler)
+        else:
+            if config.verbose:
+                print stacktrace
+        return last_line
 
     def parse_request(self, request_body):
         """
@@ -317,6 +334,10 @@ class Faults(object):
         else:
             message = ' '.join(map(str.capitalize, attr.split('_')))
         fault = FaultMethod(self.fault, self.codes[attr], message)
+        return fault
+
+    def custom_error(self, errmsg):
+        fault = self.fault(-32000, errmsg)
         return fault
 
 
