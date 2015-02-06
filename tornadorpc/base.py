@@ -142,9 +142,15 @@ class BaseRPCParser(object):
 
         from tornado.concurrent import Future
         if isinstance(response, Future):
-            def on_complete(future):
-                self.handler.result(future.result())
-            tornado.ioloop.IOLoop.instance().add_future(response, on_complete)
+            # self.handler is actually a transient: BaseRPCParser is used as a
+            # singleton class where self.handler changes each time a request is
+            # processed, so we need to treat it as a temporary, that may change
+            # anytime control flow returns to Tornado's IO handler
+            def make_completer(handler):
+                def completer(future):
+                    handler.result(future.result())
+                return completer
+            tornado.ioloop.IOLoop.instance().add_future(response, make_completer(self.handler))
         elif getattr(method, 'async', False):
             # Asynchronous response -- the method should have called
             # self.result(RESULT_VALUE)
