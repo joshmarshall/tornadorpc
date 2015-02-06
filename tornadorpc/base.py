@@ -140,7 +140,12 @@ class BaseRPCParser(object):
             self.traceback(method_name, params)
             return self.handler.result(self.faults.internal_error())
 
-        if getattr(method, 'async', False):
+        from tornado.concurrent import Future
+        if isinstance(response, Future):
+            def on_complete(future):
+                self.handler.result(future.result())
+            tornado.ioloop.IOLoop.instance().add_future(response, on_complete)
+        elif getattr(method, 'async', False):
             # Asynchronous response -- the method should have called
             # self.result(RESULT_VALUE)
             if response is not None:
