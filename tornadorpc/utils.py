@@ -19,7 +19,7 @@ def getcallargs(func, *positional, **named):
     final_kwargs = {}
     extra_args = []
     has_self = inspect.ismethod(func) and func.im_self is not None
-    if has_self:
+    if has_self and len(args) > 0:
         args.pop(0)
 
     # (Since our RPC supports only positional OR named.)
