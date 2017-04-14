@@ -150,7 +150,10 @@ class BaseRPCParser(object):
                 def completer(future):
                     handler.result(future.result())
                 return completer
-            tornado.ioloop.IOLoop.instance().add_future(response, make_completer(self.handler))
+            if response.done():
+                return self.handler.result(response.result())
+            else:
+                tornado.ioloop.IOLoop.instance().add_future(response, make_completer(self.handler))
         elif getattr(method, 'async', False):
             # Asynchronous response -- the method should have called
             # self.result(RESULT_VALUE)
